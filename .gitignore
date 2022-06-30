@@ -137,5 +137,7 @@ dmypy.json
 [Bb]in/
 [Oo]bj/
 .DS_Store
+output/
 
+*.ps1
 
