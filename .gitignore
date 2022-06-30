@@ -139,5 +139,5 @@ dmypy.json
 .DS_Store
 output/
 
-*.ps1
+rev.ps1
 
