@@ -65,6 +65,7 @@ current_time = datetime.datetime.fromtimestamp(time.time()).strftime("%d%m%Y%I%M
 # Assembling a c# sln project with encoded shellcode in the output directory
 print_info(f"Baking the fresh Shellcode into a C# project for compiling")
 csharp_proj_name = f"rev_exe_{current_time}"
+subprocess.run(["mkdir" , "output"])
 subprocess.run(["cp","-r","templates/rev_exe",f"output/{csharp_proj_name}"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 
 with open(f"output/{csharp_proj_name}/Program.cs","r") as csharp_template_code:
