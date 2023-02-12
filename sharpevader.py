@@ -92,6 +92,7 @@ def main():
     # Printing the Datetime when the command is run
     current_time = datetime.datetime.fromtimestamp(time.time()).strftime("%d/%m/%Y %I:%M:%S %p")
     print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]{end}  Starting Payload Generation Process @ {bold}{teal}{current_time}{end}",level=logger.level)
+    
     # Setting the File Formats
     if args.dll:
         mode = "dll"
@@ -102,6 +103,15 @@ def main():
     print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]{end}  Signature Bypass : {teal}{bold}Process Hollowing{end}\tHeuristic Bypass : {teal}{bold}Sleep Calls{end}",level=logger.level)
 
     print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]{end}  Format : {teal}{bold}{extenstions}{end}\t\t\t\tPowershell Reflection : {teal}{bold}{reflection}{end}",level=logger.level)
+    
+    # Checking if the user is using untested payloads
+    if args.p not in ["windows/x64/meterpreter/reverse_tcp","windows/x64/meterpreter/reverse_https"]:
+        print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{yellow}{bold}\t\t[!]  You are using an untested payload {args.p} this may not work {end}",level=logger.level)
+        print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{yellow}{bold}\t\t[!]  Following are the tested payloads : ",level=logger.level)
+        print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]  {lgreen}{bold}windows/x64/meterpreter/reverse_tcp{end}",level=logger.level)
+        print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]  {lgreen}{bold}windows/x64/meterpreter/reverse_https{end}",level=logger.level)
+    
+    
     # Generating the msfvenom payload and placing it in the /tmp/sharpevader_tmp/msf_shellcode.hex
     generate_msfvenom_payload()
 
