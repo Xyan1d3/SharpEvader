@@ -11,11 +11,17 @@ yellow = "\033[38;5;214m"
 end = "\033[0m"
 
 
-def print_success(text) :
-    print(f"{bold}{lgreen}[+] {end}{text}")
-def ainfo(text) :
-    print(f"{bold}{purple}[*] {end}{text}")
-def aerr(text) : 
-    print(f"{bold}{red}[-] {end}{text}")
+def print_success(text,level=40) :
+    if level != 10:
+        print(f"{bold}{lgreen}[+] {end}{text}")
+def print_info(text,level=40) :
+    if level != 10:
+        print(f"{bold}{purple}[*] {end}{text}")
+def print_error(text,level=40) : 
+    if level != 10:
+        print(f"{bold}{red}[-] {end}{text}")
+def print_data(text,level=40) :
+    if level != 10:
+        print(text)
 
-print(f"SharpEvader {bold}{orange}v2.0{end} - Made by {bold}{teal}Xyan1d3{end}")
+print(f"SharpEvader {bold}{orange}v2.0{end} - Made by {bold}{teal}Xyan1d3{end}\n")

