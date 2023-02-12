@@ -1,3 +1,4 @@
+from helpers.log import logger
 
 def xor_encryptor(integer_shellcode,key="a"):
     hex_key = hex(int(key,16))
@@ -11,7 +12,7 @@ for (int i = 0; i < buf.Length; i++)
     buf[i] = (byte)(((uint)buf[i] ^ %s) & 0xFF);
 }
 """ % (hex_key)
-    
+    logger.debug(f"Using the xor_encryptor with key : {hex_key}")
     # Formatting the shellcode for usage in csharp
     final_shellcode = ""
     for i in range(len(obfuscated_shellcode)):
@@ -25,4 +26,5 @@ for (int i = 0; i < buf.Length; i++)
         if i == len(obfuscated_shellcode)-1:
             final_shellcode += " };"
 
+    logger.debug(f"XOR encrypted Shellcode generated with key {hex_key}, and decryption routine for csharp")
     return final_shellcode,hex_key,decryption_routine_csharp
