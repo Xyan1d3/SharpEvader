@@ -44,6 +44,18 @@ testing_args = {
     }
 }
 
+evasion_args = {
+    "-sit" : {
+    "help" : "Shellcode Injection Technique\nHello world\nHello world\nHello world",
+    #"choices" : [1,2,3,4],
+    "required" : False
+    },
+    "-bb" : {
+    "help" : "Behaviour Bypass Technique",
+    "required" : False
+    }
+}
+
 def generate_cli_args():
     global parser 
     parser= argparse.ArgumentParser(description=f"""{bold}{orange} ____  _                      _____                _ 
@@ -59,7 +71,10 @@ def generate_cli_args():
     optional = parser.add_argument_group("Payload Formats", "Options for modifying payload formats")
     for param in optional_args.keys():
         optional.add_argument(param,**optional_args[param])
-
+    
+    evasion_group = parser.add_argument_group("Evasion Options", "Evasion Payload modification")
+    for param in evasion_args.keys():
+        evasion_group.add_argument(param,**evasion_args[param])
     testing = parser.add_argument_group("Debugging", "For Debugging Purposes")
     for param in testing_args.keys():
         testing.add_argument(param,**testing_args[param])

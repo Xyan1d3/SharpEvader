@@ -2,7 +2,8 @@
 
 behaviour_detection_bypass:
   sleep_calls:
-    description: Sleep Timers to bypass AV Sandbox
+    title: "Sleep Calls"
+    description: "Sleep Timers to bypass AV Sandbox"
     pinvoke_imports: |
       [DllImport("kernel32.dll")]
       static extern void Sleep(uint dwMilliseconds);
@@ -15,7 +16,8 @@ behaviour_detection_bypass:
         return;
       }
   pinvoke_sandbox:
-    description: pinvoke API calls which can detect AV Sandbox
+    title: "VirtualAllocExNuma"
+    description: "pinvoke API calls which can detect AV Sandbox"
     pinvoke_imports: |
       [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
       static extern IntPtr VirtualAllocExNuma(IntPtr hProcess, IntPtr lpAddress, uint dwSize, UInt32 flAllocationType, UInt32 flProtect, UInt32 nndPreferred);
