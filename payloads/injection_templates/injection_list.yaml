@@ -1,6 +1,6 @@
 payload_types:
   process_inject:
-    process_name : "Process Hollowing"
+    process_name: "Process Hollowing"
     payload_file: "process_injection.cs"
     pinvoke: 69
     behaviour_bypass: 74

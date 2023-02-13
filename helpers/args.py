@@ -1,5 +1,28 @@
+import os
+import yaml
 import argparse
 from helpers.colorize import *
+
+
+script_path = os.path.dirname(os.path.abspath(__file__))
+with open(f"{script_path}/../payloads/injection_templates/injection_list.yaml","r") as f:
+    evasion_style = yaml.load(f, Loader=yaml.SafeLoader)
+with open(f"{script_path}/../payloads/behaviour_bypass/behaviour_bypass.yaml","r") as f:
+    behaviour_bypass = yaml.load(f, Loader=yaml.SafeLoader)
+
+# Creating a list of the available shellcode injection templates
+available_evasion_csharp_templates = list(evasion_style["payload_types"].keys())
+available_behaviour_bypass_templates = list(behaviour_bypass["behaviour_detection_bypass"].keys())
+
+help_evasion_csharp_templates = ""
+help_behaviour_bypass_templates = ""
+
+for each in available_evasion_csharp_templates:
+    help_evasion_csharp_templates += f"{lgreen}{bold}{each}{end} : {evasion_style['payload_types'][each]['process_name']}\n"
+
+for each in available_behaviour_bypass_templates:
+    help_behaviour_bypass_templates += f"{lgreen}{bold}{each}{end} : {behaviour_bypass['behaviour_detection_bypass'][each]['title']}\n"
+
 
 main_args = {
     "-p" : {
@@ -36,6 +59,7 @@ optional_args = {
     "required" : False
     }
 }
+
 testing_args = {
     "-v" : {
     "help" : "Enables verbose logging",
@@ -46,12 +70,13 @@ testing_args = {
 
 evasion_args = {
     "-sit" : {
-    "help" : "Shellcode Injection Technique\nHello world\nHello world\nHello world",
-    #"choices" : [1,2,3,4],
+    "help" : f"Shellcode Injection Technique\n{help_evasion_csharp_templates}",
+    "choices" : available_evasion_csharp_templates,
     "required" : False
     },
     "-bb" : {
-    "help" : "Behaviour Bypass Technique",
+    "help" : f"Behaviour Bypass Technique\n{help_behaviour_bypass_templates}",
+    "choices" : available_behaviour_bypass_templates,
     "required" : False
     }
 }
@@ -71,8 +96,7 @@ def generate_cli_args():
     optional = parser.add_argument_group("Payload Formats", "Options for modifying payload formats")
     for param in optional_args.keys():
         optional.add_argument(param,**optional_args[param])
-    
-    evasion_group = parser.add_argument_group("Evasion Options", "Evasion Payload modification")
+    evasion_group = parser.add_argument_group("Evasion Options", "Evasion Payload Arguments")
     for param in evasion_args.keys():
         evasion_group.add_argument(param,**evasion_args[param])
     testing = parser.add_argument_group("Debugging", "For Debugging Purposes")
