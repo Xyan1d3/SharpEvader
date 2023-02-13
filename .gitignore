@@ -140,4 +140,6 @@ dmypy.json
 output/
 
 rev.ps1
+rev.exe
+rev.dll
 
